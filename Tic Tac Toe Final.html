@@ -1,0 +1,257 @@
+<!DOCTYPE HTML>
+<!--
+	Carter Li
+-->
+<html>
+	<head>
+		<title>Tic Tac Toe</title>
+		<link rel = "stylesheet" href = "tictactoe.css" />
+		<style>
+		</style>
+		<script src = "utilities.js"></script>
+		<script>
+
+		var config =	//Configuration for winning conditions and game logic.
+		{
+			cells:[	{id: 1, partners: [2, 3, 4, 5, 7, 9], win: ["condition1", "condition4", "condition7"]},
+				{id: 2, partners: [1, 3, 5, 8], win: ["condition1", "condition5"]},
+				{id: 3, partners: [1, 2, 5, 6, 7, 9], win: ["condition1", "condition6", "condition8"]},
+				{id: 4, partners: [1, 5, 6, 7], win: ["condition2", "condition4"]},
+				{id: 5, partners: [1, 2, 3, 4, 6, 7, 8, 9], win: ["condition2", "condition5", "condition7", "condition8"]},
+				{id: 6, partners: [3, 4, 5, 9], win: ["condition2", "condition6"]},
+				{id: 7, partners: [1, 3, 4, 5, 8, 9], win: ["condition3", "condition4", "condition8"]},
+				{id: 8, partners: [2, 5, 7, 9], win: ["condition3", "condition5"]},
+				{id: 9, partners: [1, 3, 5, 6, 7, 8], win: ["condition3", "condition6", "condition7"]}
+			],
+			winning: {
+				"condition1": [1,2,3], "condition2": [4,5,6], "condition3": [7,8,9], "condition4": [1,4,7], "condition5": [2,5,8], "condition6": [3,6,9], "condition7": [1,5,9], "condition8": [3,5,7]
+			}
+		};
+
+		var allCells;
+		var isPlayerX;
+		var roundCounter;
+		var gameEnded;
+		var lockBoard;
+
+		function initialize()	//Initializes and resets variables.
+		{
+			isPlayerX = undefined;
+			gameEnded = undefined;
+			roundCounter = 1;
+			lockBoard = true;
+			allCells = document.getElementById("board").getElementsByTagName("td");
+			selectionOutputO = document.getElementById("selectiono");
+			selectionOutputX = document.getElementById("selectionx");
+			resetOutput = document.getElementById("reset");
+			selectionOutputO.style.display = "inline-block";
+			selectionOutputX.style.display = "inline-block";
+			resetOutput.style.display = "none";
+			for(var i=0; i < allCells.length; i++) {
+				allCells[i].properties = config.cells[i];
+				allCells[i].onclick = placeMarker;
+				allCells[i].innerHTML = "";
+				allCells[i].style["background-color"] = "black";
+				allCells[i].owner = undefined;
+				allCells[i].lock = undefined;
+				allCells[i].lastUpdated = undefined;
+			}
+		}
+
+		function selectMarker(marker)	//Allows the user to select either X or O. Hides/shows buttons.
+		{
+			lockBoard = false;
+			isPlayerX = marker;
+			selectionOutputO.style.display = "none";
+			selectionOutputX.style.display = "none";
+			resetOutput.style.display = "inline-block";
+			if(!isPlayerX){
+				intelligentAI();
+			}
+		}
+		function placeMarker()	//Places the image in the corresponding cell when clicked.
+		{
+			if(checkLegal(this) === true && lockBoard !== true){
+				if(this.lastUpdated && this.lastUpdated.turn === roundCounter - 1 && this.lastUpdated.owner != roundCounter % 2) {
+					return;
+				}
+				if(this.owner === undefined) {
+					this.owner = roundCounter % 2
+				}	else if(this.owner === roundCounter % 2) {
+					this.lock = true;
+				} else {
+					this.owner = roundCounter % 2
+				}
+				this.lastUpdated = {owner: roundCounter % 2, turn: roundCounter};
+				if(this.owner === 1 && this.lock !== true){
+					this.innerHTML="<img src='images/x.png'/>";
+				}else if(this.owner === 0 && this.lock !== true){
+					this.innerHTML="<img src='images/o.png'/>";
+				}else if(this.owner ===1 && this.lock === true){
+					this.innerHTML="<img src='images/xx.png'/>";
+				}else if(this.owner ===0 && this.lock === true){
+					this.innerHTML="<img src='images/oo.png'/>";
+				}
+				if(winCheck(this)){
+					lockBoard = true;
+					gameEnded = true;
+					return;
+				}
+				roundCounter++;
+				if((isPlayerX && roundCounter % 2 === 0) || (!isPlayerX && roundCounter % 2 === 1)){
+					lockBoard = true;
+					setTimeout(function(){lockBoard=false; intelligentAI();}, 500);
+				}
+			}
+		}
+
+		function checkLegal(cell)	//Checks for ended game or if a cell is locked.
+		{
+			if(gameEnded || cell.lock === true){
+				return false;
+			}
+			return true;
+		}
+
+		function intelligentAI()	//AI logic
+		{
+			if(gameEnded){
+				return;
+			}
+			var myMarker = isPlayerX?0:1;
+			var availableCells= [];
+			for(var i = 0; i < allCells.length; i++){
+				if(allCells[i].lock !== true){
+					if(!(allCells[i].lastUpdated && allCells[i].lastUpdated.turn === roundCounter - 1 && allCells[i].lastUpdated.owner != roundCounter % 2)) { //temp lock
+						availableCells.push(allCells[i]);
+					}
+				}
+			}
+			//Checks to see if the AI can win on the next move. If so, place.
+			for(var i=0; i < allCells.length; i++){
+				if(allCells[i].owner === myMarker){
+					var cell = allCells[i];
+					for(var ii=0; ii < cell.properties.win.length; ii++){
+							var condition = config.winning[cell.properties.win[ii]]
+							var noOfCellsOwned = 0;
+							var notOwned = null;
+							for(var j=0; j < condition.length; j++ ) {
+								noOfCellsOwned = 0;
+								notOwned = null;
+								if(allCells[condition[0] - 1].owner === myMarker) {
+									noOfCellsOwned++;
+								} else if(availableCells.includes(allCells[condition[0] - 1])) {
+									notOwned = allCells[condition[0] - 1];
+								}
+								if(allCells[condition[1] - 1].owner === myMarker){
+									noOfCellsOwned++;
+								} else  if(availableCells.includes(allCells[condition[1] - 1])){
+									notOwned = allCells[condition[1] - 1];
+								}
+								if(allCells[condition[2] - 1].owner === myMarker){
+									noOfCellsOwned++;
+								} else  if(availableCells.includes(allCells[condition[2] - 1])){
+										notOwned = allCells[condition[2] - 1];
+								}
+								if(noOfCellsOwned === 2 && notOwned !== null) {
+									notOwned.click();
+									return;
+								}
+							}
+					}
+				}
+			}
+			//Checks if opponent can win in the next move. If so, block.
+			var oppMarker = (myMarker + 1) % 2;
+			for(var i=0; i < allCells.length; i++){
+				if(allCells[i].owner === oppMarker){
+					var cell = allCells[i];
+					for(var ii=0; ii < cell.properties.win.length; ii++){
+							var condition = config.winning[cell.properties.win[ii]]
+							var noOfCellsOwned = 0;
+							var notOwned = null;
+
+							for(var j=0; j < condition.length; j++ ) {
+								noOfCellsOwned = 0;
+								notOwned = null;
+								if(allCells[condition[0] - 1].owner === oppMarker) {
+									noOfCellsOwned++;
+								} else if(availableCells.includes(allCells[condition[0] - 1])) {
+									notOwned = allCells[condition[0] - 1];
+								}
+								if(allCells[condition[1] - 1].owner === oppMarker){
+									noOfCellsOwned++;
+								} else  if(availableCells.includes(allCells[condition[1] - 1])){
+									notOwned = allCells[condition[1] - 1];
+								}
+								if(allCells[condition[2] - 1].owner === oppMarker){
+									noOfCellsOwned++;
+								} else  if(availableCells.includes(allCells[condition[2] - 1])){
+										notOwned = allCells[condition[2] - 1];
+								}
+								if(noOfCellsOwned === 2 && notOwned !== null) {
+									notOwned.click();
+									return;
+								}
+							}
+					}
+				}
+			}
+			//When the AI can't win or block in the next turn, it will choose the next best position which has the most open opportunities.
+			var mostPartners;
+			for(var i = 0; i < availableCells.length; i++){
+				if(i===0) {
+					mostPartners = availableCells[i]
+				} else if(availableCells[i].properties.partners.length > mostPartners.properties.partners.length){
+					mostPartners = availableCells[i]
+				}
+			}
+			mostPartners.click();
+		}
+
+		function winCheck(cell)	//Checks if player or AI has won. If so, colors background of winning cells.
+		{
+			for(var i=0; i < cell.properties.win.length; i++){
+					var condition = config.winning[cell.properties.win[i]]
+					for(var j=0; j < condition.length; j++ ) {
+						if(allCells[condition[0] - 1].owner === roundCounter % 2 && allCells[condition[1] - 1].owner === roundCounter % 2 && allCells[condition[2] - 1].owner === roundCounter % 2) {
+							allCells[condition[0] - 1].style["background-color"] = "#1E1E1E";
+							allCells[condition[1] - 1].style["background-color"] = "#1E1E1E";
+							allCells[condition[2] - 1].style["background-color"] = "#1E1E1E";
+							return true;
+						}
+					}
+			}
+			return false;
+		}
+
+</script>
+</head>
+
+<body onload = "initialize();">
+	<img class = "title" src="images/title.png" width="500" height="125"/>
+	<div><img src="images/name.png" width="127.5" height="30"></div>
+	<table id="board">
+	<tr>
+	<td></td>
+	<td class = "vert"></td>
+	<td></td>
+	</tr>
+	<tr>
+	<td class = "hori"></td>
+	<td class = "vert hori"></td>
+	<td class = "hori"></td>
+	</tr>
+	<tr>
+	<td></td>
+	<td class = "vert"></td>
+	<td></td>
+	</tr>
+	</table>
+	<div>
+	<img id = "selectionx" src="images/selectx.png" onclick= selectMarker(true); width="204" height="78" onmouseover="this.src = 'images/selectx2.png';" onmouseout="this.src = 'images/selectx.png';"/>
+	<img id = "selectiono" src="images/selecto.png" onclick= selectMarker(false); width="204" height="78" onmouseover="this.src = 'images/selecto2.png';" onmouseout="this.src = 'images/selecto.png';"/>
+	</div>
+	<img id = "reset" src="images/reset.png" onclick= initialize(); width="204" height="78" onmouseover="this.src = 'images/reset2.png';" onmouseout="this.src = 'images/reset.png';"/>
+	</body>
+</html>
